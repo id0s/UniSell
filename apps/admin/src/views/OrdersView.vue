@@ -112,7 +112,7 @@ function formatTime(iso: string) {
   <AdminLayout title="Orders Inbox" :flush-main="true">
     <!-- Middle Pane: Dappr Inbox List (Exact Dribbble 22461595 Layout) -->
     <section
-      class="w-[360px] shrink-0 border-r flex flex-col h-screen sticky top-0"
+      class="w-full lg:w-[360px] shrink-0 border-b lg:border-b-0 lg:border-r flex flex-col lg:h-screen lg:sticky lg:top-0"
       style="background: var(--surface-2); border-color: var(--border)"
     >
       <div class="p-6 pb-4 space-y-4">

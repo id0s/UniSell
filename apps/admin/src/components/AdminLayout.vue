@@ -20,6 +20,7 @@ const theme = useThemeStore();
 
 const drawerHovered = ref(false);
 const drawerPinned = ref(false);
+const mobileMenuOpen = ref(false);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
 const isDrawerOpen = computed(() => drawerPinned.value || drawerHovered.value);
@@ -113,10 +114,74 @@ async function handleLogout() {
 </script>
 
 <template>
-  <div class="min-h-screen w-full flex relative" style="background: var(--bg); color: var(--text)">
-    <!-- 1. Floating Obsidian Dark Icon Rail (always visible, hover triggers sub-menu) -->
+  <div class="min-h-screen w-full flex flex-col md:flex-row relative" style="background: var(--bg); color: var(--text)">
+    <!-- Mobile Top Bar (< md) -->
+    <header
+      class="md:hidden flex items-center justify-between px-4 h-14 border-b sticky top-0 z-40"
+      style="background: var(--surface); border-color: var(--border)"
+    >
+      <div class="flex items-center gap-2.5">
+        <button
+          type="button"
+          class="w-9 h-9 rounded-xl border flex items-center justify-center text-base cursor-pointer"
+          style="background: var(--surface-2); border-color: var(--border); color: var(--text)"
+          @click="mobileMenuOpen = !mobileMenuOpen"
+        >
+          ☰
+        </button>
+        <span class="font-bold text-sm">UniSell Admin</span>
+      </div>
+      <button
+        type="button"
+        class="w-9 h-9 rounded-xl border flex items-center justify-center text-sm cursor-pointer"
+        style="background: var(--surface-2); border-color: var(--border); color: var(--text)"
+        @click="theme.toggleQuickMode()"
+      >
+        {{ isDark ? '☀️' : '🌙' }}
+      </button>
+    </header>
+
+    <!-- Mobile Slide-Over Menu Drawer (< md) -->
     <div
-      class="p-3 pr-2 flex shrink-0 sticky top-0 h-screen z-40"
+      v-if="mobileMenuOpen"
+      class="md:hidden fixed inset-0 z-50 flex"
+      style="background: rgba(0,0,0,0.5)"
+      @click.self="mobileMenuOpen = false"
+    >
+      <aside class="w-64 h-full p-5 flex flex-col justify-between shadow-2xl" style="background: var(--surface); color: var(--text)">
+        <div class="space-y-6">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-lg">UniSell</span>
+            <button type="button" class="text-lg px-2" @click="mobileMenuOpen = false">✕</button>
+          </div>
+          <nav class="space-y-1.5">
+            <RouterLink
+              v-for="item in subMenuItems"
+              :key="item.to"
+              :to="item.to"
+              class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium no-underline"
+              :style="route.path === item.to ? { background: 'var(--primary)', color: 'var(--primary-fg)' } : { color: 'var(--text)' }"
+              @click="mobileMenuOpen = false"
+            >
+              <span>{{ item.label }}</span>
+              <span v-if="item.badge !== null" class="text-xs font-mono-code">{{ item.badge }}</span>
+            </RouterLink>
+          </nav>
+        </div>
+        <div class="space-y-2 pt-4 border-t" style="border-color: var(--border)">
+          <a href="/" class="block px-3 py-2 rounded-xl text-xs no-underline" style="background: var(--surface-2); color: var(--text)">
+            ← Storefront
+          </a>
+          <button type="button" class="w-full text-left px-3 py-2 rounded-xl text-xs" style="color: var(--danger)" @click="handleLogout">
+            Logout
+          </button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- 1. Floating Obsidian Dark Icon Rail (desktop md+ only) -->
+    <div
+      class="hidden md:flex p-3 pr-2 shrink-0 sticky top-0 h-screen z-40"
       @mouseenter="openDrawer"
       @mouseleave="scheduleCloseDrawer"
     >
@@ -210,9 +275,9 @@ async function handleLogout() {
       </aside>
     </div>
 
-    <!-- 2. Hover-Reveal Sub-Menu Panel (slides out on cursor hover over rail, or stays open if pinned) -->
+    <!-- 2. Hover-Reveal Sub-Menu Panel (desktop md+ only) -->
     <aside
-      class="fixed left-[84px] top-3 bottom-3 w-60 rounded-[22px] border flex flex-col justify-between py-6 px-3.5 z-30 transition-all duration-200 shadow-2xl"
+      class="hidden md:flex fixed left-[84px] top-3 bottom-3 w-60 rounded-[22px] border flex-col justify-between py-6 px-3.5 z-30 transition-all duration-200 shadow-2xl"
       :class="isDrawerOpen ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 -translate-x-4 pointer-events-none'"
       :style="{
         background: isDark
@@ -339,7 +404,7 @@ async function handleLogout() {
         </div>
       </div>
 
-      <main :class="flushMain ? 'flex-1 flex min-h-screen' : 'flex-1 p-8 space-y-6'">
+      <main :class="flushMain ? 'flex-1 flex flex-col lg:flex-row min-h-screen' : 'flex-1 p-4 md:p-8 space-y-6'">
         <slot />
       </main>
     </div>
