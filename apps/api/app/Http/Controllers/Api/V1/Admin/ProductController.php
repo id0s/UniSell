@@ -46,7 +46,16 @@ class ProductController extends Controller
 
     public function syncSupplier(Request $request, Supplier $supplier): JsonResponse
     {
-        $synced = $this->aggregatorService->syncFromSupplier($supplier, $request->user()?->id);
+        try {
+            $synced = $this->aggregatorService->syncFromSupplier($supplier, $request->user()?->id);
+        } catch (DomainException $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'SYNC_FAILED',
+                    'message' => $e->getMessage(),
+                ],
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
 
         return response()->json([
             'data' => [

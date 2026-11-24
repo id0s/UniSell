@@ -4,6 +4,7 @@ namespace App\Services\Suppliers;
 
 use App\Contracts\SupplierDriverInterface;
 use App\Models\Supplier;
+use DomainException;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -41,12 +42,22 @@ class DigiflazzSupplierDriver implements SupplierDriverInterface
             ]);
 
         if (! $response->successful()) {
-            return [];
+            $errMsg = (string) ($response->json('data.message') ?? "HTTP {$response->status()}");
+            $rc = (string) ($response->json('data.rc') ?? '');
+
+            if (str_starts_with($apiKey, 'dev-') && $rc === '41') {
+                throw new DomainException(
+                    'Digiflazz menolak /v1/price-list (rc: 41) karena masih memakai Development Key (dev-...). Ganti API Key ke Production Key di "Atur API Key" untuk menarik daftar produk Digiflazz.'
+                );
+            }
+
+            throw new DomainException("Sync Digiflazz gagal ({$rc}): {$errMsg}");
         }
 
         $items = $response->json('data');
-        if (! is_array($items)) {
-            return [];
+        if (! is_array($items) || ! array_is_list($items)) {
+            $errMsg = (string) ($response->json('data.message') ?? 'Format daftar produk tidak valid.');
+            throw new DomainException("Sync Digiflazz gagal: {$errMsg}");
         }
 
         $normalized = [];

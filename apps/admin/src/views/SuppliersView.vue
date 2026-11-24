@@ -117,13 +117,18 @@ async function checkHealth(id: number) {
 }
 
 async function syncProducts(id: number) {
-  const res = await apiRequest<{ data: { synced_count: number } }>(
-    `/admin/suppliers/${id}/sync-products`,
-    { method: 'POST' },
-    auth.token
-  );
-  message.value = `Sinkronisasi selesai: ${res.data.synced_count} produk masuk supplier_products. Lanjut pilih di menu Products & Pricing.`;
-  refetch();
+  message.value = '';
+  try {
+    const res = await apiRequest<{ data: { synced_count: number } }>(
+      `/admin/suppliers/${id}/sync-products`,
+      { method: 'POST' },
+      auth.token
+    );
+    message.value = `Sinkronisasi selesai: ${res.data.synced_count} produk masuk supplier_products. Lanjut pilih di menu Products & Pricing.`;
+    refetch();
+  } catch (e: any) {
+    message.value = e?.message || 'Gagal melakukan sinkronisasi produk supplier.';
+  }
 }
 
 async function cancelSub(subscriptionId: number) {
