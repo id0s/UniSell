@@ -1,0 +1,231 @@
+/* UniSell Design System — Theme System v1.0 (Neon Dark default + 8 Presets, Causal-inspired SaaS UI) */
+
+:root {
+  /* Default: Neon Dark (agents.md) */
+  --bg: #0A0B14;
+  --surface: #12142A;
+  --surface-2: #1A1D3A;
+  --border: #2A2E5A;
+  --text: #E8EAF6;
+  --muted: #8A90B8;
+  --primary: #00F0FF;
+  --primary-fg: #0A0B14;
+  --accent: #FF2BD6;
+  --accent-fg: #FFFFFF;
+  --success: #B6FF3B;
+  --warning: #FFB800;
+  --danger: #FF4D6D;
+  --glow-primary: 0 0 12px rgba(0, 240, 255, 0.45);
+  --glow-accent: 0 0 12px rgba(255, 43, 214, 0.45);
+  --radius: 12px;
+  --density-pad-y: 0.55rem;
+  --density-pad-x: 0.9rem;
+  --density-gap: 0.875rem;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+[data-density="compact"] {
+  --density-pad-y: 0.35rem;
+  --density-pad-x: 0.7rem;
+  --density-gap: 0.625rem;
+}
+
+[data-density="comfortable"] {
+  --density-pad-y: 0.55rem;
+  --density-pad-x: 0.9rem;
+  --density-gap: 0.875rem;
+}
+
+[data-density="spacious"] {
+  --density-pad-y: 0.8rem;
+  --density-pad-x: 1.2rem;
+  --density-gap: 1.25rem;
+}
+
+html,
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.font-mono-code {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Causal-inspired clean cards & hairline surfaces */
+.unisell-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.unisell-card-elevated {
+  background-color: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+}
+
+/* Causal-inspired formula variable chips */
+.unisell-formula-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background-color: var(--surface-2);
+  color: var(--text);
+}
+
+/* Causal-inspired spreadsheet data grid */
+.unisell-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8125rem;
+}
+
+.unisell-table thead th {
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--surface-2);
+}
+
+.unisell-table thead th:first-child {
+  border-top-left-radius: calc(var(--radius) - 4px);
+}
+
+.unisell-table thead th:last-child {
+  border-top-right-radius: calc(var(--radius) - 4px);
+}
+
+.unisell-table tbody td {
+  padding: 0.7rem 0.875rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.unisell-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.unisell-table tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.unisell-table tbody tr:hover {
+  background-color: var(--surface-2);
+}
+
+.unisell-btn-primary {
+  background-color: var(--primary);
+  color: var(--primary-fg);
+  border-radius: calc(var(--radius) - 2px);
+  padding: var(--density-pad-y) var(--density-pad-x);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+
+.unisell-btn-primary:hover,
+.unisell-btn-primary:focus-visible {
+  box-shadow: var(--glow-primary);
+  outline: none;
+}
+
+.unisell-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.unisell-btn-secondary {
+  background-color: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  padding: var(--density-pad-y) var(--density-pad-x);
+  font-weight: 500;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.unisell-btn-secondary:hover,
+.unisell-btn-secondary:focus-visible {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.unisell-input {
+  background-color: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  padding: var(--density-pad-y) var(--density-pad-x);
+  width: 100%;
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.unisell-input:focus {
+  border-color: var(--primary);
+  box-shadow: var(--glow-primary);
+  outline: none;
+}
+
+.unisell-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.175rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background-color: var(--surface-2);
+}
+
+.unisell-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--border);
+  outline: none;
+}
+
+.unisell-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--primary);
+  cursor: pointer;
+  box-shadow: var(--glow-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+}

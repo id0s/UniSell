@@ -1,0 +1,15 @@
+{
+  "name": "unisell-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/admin",
+    "apps/storefront"
+  ],
+  "scripts": {
+    "dev:admin": "npm --workspace=@unisell/admin run dev",
+    "build:admin": "npm --workspace=@unisell/admin run build",
+    "dev:storefront": "npm --workspace=@unisell/storefront run dev",
+    "build:storefront": "npm --workspace=@unisell/storefront run build"
+  }
+}
