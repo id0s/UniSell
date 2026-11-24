@@ -123,58 +123,158 @@ async function handleLogout() {
       <div class="flex items-center gap-2.5">
         <button
           type="button"
-          class="w-9 h-9 rounded-xl border flex items-center justify-center text-base cursor-pointer"
-          style="background: var(--surface-2); border-color: var(--border); color: var(--text)"
+          class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold cursor-pointer"
+          style="background: #18181B; color: #FFFFFF"
           @click="mobileMenuOpen = !mobileMenuOpen"
         >
           ☰
         </button>
-        <span class="font-bold text-sm">UniSell Admin</span>
+        <span class="font-bold text-sm tracking-tight">UniSell</span>
       </div>
-      <button
-        type="button"
-        class="w-9 h-9 rounded-xl border flex items-center justify-center text-sm cursor-pointer"
-        style="background: var(--surface-2); border-color: var(--border); color: var(--text)"
-        @click="theme.toggleQuickMode()"
-      >
-        {{ isDark ? '☀️' : '🌙' }}
-      </button>
+      <span class="text-xs font-medium" style="color: var(--muted)">{{ title }}</span>
     </header>
 
-    <!-- Mobile Slide-Over Menu Drawer (< md) -->
+    <!-- Mobile Slide-Over Drawer matching Desktop Dappr Rail + Lavender Sub-Menu (< md) -->
     <div
       v-if="mobileMenuOpen"
-      class="md:hidden fixed inset-0 z-50 flex"
-      style="background: rgba(0,0,0,0.5)"
+      class="md:hidden fixed inset-0 z-50 flex p-3 gap-2"
+      style="background: rgba(0, 0, 0, 0.55)"
       @click.self="mobileMenuOpen = false"
     >
-      <aside class="w-64 h-full p-5 flex flex-col justify-between shadow-2xl" style="background: var(--surface); color: var(--text)">
-        <div class="space-y-6">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-lg">UniSell</span>
-            <button type="button" class="text-lg px-2" @click="mobileMenuOpen = false">✕</button>
-          </div>
-          <nav class="space-y-1.5">
+      <!-- Mini Obsidian Rail (identical to desktop) -->
+      <div
+        class="w-[62px] rounded-[22px] py-5 flex flex-col items-center justify-between shadow-2xl border shrink-0"
+        :style="{
+          background: isDark ? '#111113' : '#18181B',
+          borderColor: isDark ? '#26262A' : 'transparent',
+          color: '#FFFFFF',
+        }"
+      >
+        <div class="space-y-6 flex flex-col items-center w-full">
+          <span class="font-bold text-sm">us.</span>
+          <nav class="space-y-2 w-full">
             <RouterLink
-              v-for="item in subMenuItems"
-              :key="item.to"
+              v-for="item in railItems"
+              :key="'m-rail-' + item.to"
               :to="item.to"
-              class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium no-underline"
-              :style="route.path === item.to ? { background: 'var(--primary)', color: 'var(--primary-fg)' } : { color: 'var(--text)' }"
+              class="relative flex items-center justify-center py-2.5 no-underline"
+              :style="{ color: route.path === item.to ? '#FFFFFF' : '#A1A1AA' }"
               @click="mobileMenuOpen = false"
             >
-              <span>{{ item.label }}</span>
-              <span v-if="item.badge !== null" class="text-xs font-mono-code">{{ item.badge }}</span>
+              <span v-if="route.path === item.to" class="absolute left-0 top-2 bottom-2 w-[3.5px] rounded-r-full bg-white" />
+              <svg v-if="item.icon === 'home'" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5.5v-6.5h-5V21H4a1 1 0 01-1-1v-9.5z" />
+              </svg>
+              <svg v-else-if="item.icon === 'inbox'" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              <svg v-else-if="item.icon === 'grid'" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm9 0a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1V5zM4 14a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5zm9 0a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1v-5z" />
+              </svg>
+              <svg v-else-if="item.icon === 'bank'" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M5 10v8m4-8v8m6-8v8m4-8v8M3 18h18M12 3l9 5H3l9-5z" />
+              </svg>
+              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3a9 9 0 100 18 1.5 1.5 0 001.5-1.5c0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99a1.5 1.5 0 011.5-1.5H16a5 5 0 005-5c0-4.42-4.03-8-9-8z" />
+              </svg>
             </RouterLink>
           </nav>
         </div>
-        <div class="space-y-2 pt-4 border-t" style="border-color: var(--border)">
-          <a href="/" class="block px-3 py-2 rounded-xl text-xs no-underline" style="background: var(--surface-2); color: var(--text)">
-            ← Storefront
-          </a>
-          <button type="button" class="w-full text-left px-3 py-2 rounded-xl text-xs" style="color: var(--danger)" @click="handleLogout">
-            Logout
+
+        <div class="space-y-3 flex flex-col items-center">
+          <button
+            type="button"
+            class="p-2 text-zinc-400 hover:text-white cursor-pointer"
+            @click="theme.toggleQuickMode()"
+          >
+            <svg v-if="isDark" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m8.66-10h-1M4.34 12h-1m15.07 6.36l-.7-.7M6.34 6.34l-.7-.7m12.73 0l-.7.7M6.34 17.66l-.7.7M12 8a4 4 0 100 8 4 4 0 000-8z" />
+            </svg>
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+            </svg>
           </button>
+          <button type="button" class="p-2 text-zinc-400 hover:text-white cursor-pointer" @click="handleLogout">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H9m4 8H6a2 2 0 01-2-2V6a2 2 0 012-2h7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Lavender / Matte Sub-Menu Panel (identical to desktop) -->
+      <aside
+        class="w-56 rounded-[22px] border py-6 px-3.5 flex flex-col justify-between shadow-2xl"
+        :style="{
+          background: isDark
+            ? '#141416'
+            : 'linear-gradient(180deg, #F3EEFA 0%, #F8F4F9 55%, #F6F4FA 100%)',
+          borderColor: 'var(--border)',
+        }"
+      >
+        <div class="space-y-6">
+          <div class="px-2.5 flex items-center justify-between">
+            <span class="text-lg font-bold tracking-tight" style="color: var(--text)">UniSell</span>
+            <button type="button" class="text-sm px-2 py-0.5 rounded-lg" style="color: var(--muted)" @click="mobileMenuOpen = false">
+              ✕
+            </button>
+          </div>
+
+          <nav class="space-y-1">
+            <RouterLink
+              v-for="item in subMenuItems"
+              :key="'m-sub-' + item.to"
+              :to="item.to"
+              class="flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition no-underline"
+              :style="
+                route.path === item.to
+                  ? {
+                      background: 'var(--surface)',
+                      color: 'var(--text)',
+                      fontWeight: 600,
+                      boxShadow: isDark ? 'none' : '0 2px 8px rgba(30,27,75,0.06)',
+                    }
+                  : { color: 'var(--muted)', fontWeight: 500 }
+              "
+              @click="mobileMenuOpen = false"
+            >
+              <span class="truncate">{{ item.label }}</span>
+              <span
+                v-if="item.badge !== null"
+                class="min-w-[22px] h-[22px] px-1.5 rounded-md flex items-center justify-center text-[11px] font-bold font-mono-code"
+                :style="
+                  route.path === item.to
+                    ? { background: 'var(--primary)', color: 'var(--primary-fg)' }
+                    : { background: 'var(--border)', color: 'var(--text)' }
+                "
+              >
+                {{ item.badge }}
+              </span>
+            </RouterLink>
+          </nav>
+
+          <div class="pt-5 px-2.5 space-y-2.5 border-t" style="border-color: var(--border)">
+            <div class="text-xs font-bold" style="color: var(--text)">Channels</div>
+            <a href="/" class="flex items-center gap-2.5 no-underline py-1 text-[13px]" style="color: var(--muted)">
+              <span>🌐</span>
+              <span>Storefront Live</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="px-2 pt-4 border-t" style="border-color: var(--border)">
+          <div class="flex items-center gap-2.5">
+            <div
+              class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+              :style="{ background: 'var(--primary)', color: 'var(--primary-fg)' }"
+            >
+              {{ (auth.user?.name || 'A').charAt(0).toUpperCase() }}
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-semibold truncate">{{ auth.user?.name || 'Admin UniSell' }}</div>
+              <div class="text-[11px] truncate" style="color: var(--muted)">{{ auth.user?.email || 'admin@unisell.local' }}</div>
+            </div>
+          </div>
         </div>
       </aside>
     </div>
