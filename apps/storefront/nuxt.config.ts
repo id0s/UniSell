@@ -10,6 +10,8 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/api/**': { proxy: 'http://127.0.0.1:8000/api/**' },
+    '/admin': { redirect: '/admin/' },
+    '/admin/**': { proxy: 'http://127.0.0.1:8080/admin/**' },
   },
   runtimeConfig: {
     public: {
