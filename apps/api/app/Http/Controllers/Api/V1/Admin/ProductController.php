@@ -44,6 +44,38 @@ class ProductController extends Controller
         return response()->json(['data' => $query->get()]);
     }
 
+
+    public function publishAllFromSupplier(Request $request, Supplier $supplier): JsonResponse
+    {
+        $validated = $request->validate([
+            'pricing_mode' => ['sometimes', 'in:fixed,percent'],
+            'markup_value' => ['sometimes', 'integer', 'min:0'],
+        ]);
+
+        try {
+            $published = $this->aggregatorService->publishAllFromSupplier(
+                supplier: $supplier,
+                pricingMode: $validated['pricing_mode'] ?? 'fixed',
+                markupValue: (int) ($validated['markup_value'] ?? 1500),
+                actorUserId: $request->user()?->id,
+            );
+        } catch (DomainException $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'PUBLISH_FAILED',
+                    'message' => $e->getMessage(),
+                ],
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return response()->json([
+            'data' => [
+                'supplier_id' => $supplier->id,
+                'published_count' => $published,
+            ],
+        ]);
+    }
+
     public function syncSupplier(Request $request, Supplier $supplier): JsonResponse
     {
         try {

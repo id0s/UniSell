@@ -4,6 +4,7 @@ namespace App\Services\Products;
 
 use App\Models\AuditLog;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\ProductMapping;
 use App\Models\ProductPrice;
 use App\Models\Supplier;
@@ -68,8 +69,8 @@ class ProductAggregatorService
             $supplierProduct = SupplierProduct::with('supplier')->findOrFail($data['supplier_product_id']);
             $desiredStatus = $data['status'] ?? Product::STATUS_DRAFT;
 
-            if ($desiredStatus === Product::STATUS_ACTIVE && ! $supplierProduct->supplier->hasActiveSubscription()) {
-                throw new DomainException('Produk dari supplier tanpa langganan aktif tidak dapat dipublikasikan.');
+            if ($desiredStatus === Product::STATUS_ACTIVE && $supplierProduct->supplier->status === Supplier::STATUS_SUSPENDED) {
+                throw new DomainException('Produk dari supplier yang ditangguhkan tidak dapat dipublikasikan.');
             }
 
             $slug = $data['slug'] ?? Str::slug($data['name']).'-'.Str::lower(Str::random(4));
@@ -125,12 +126,14 @@ class ProductAggregatorService
     {
         $product->load(['activeMappings.supplierProduct.supplier']);
 
-        $hasActiveSupplier = $product->activeMappings->contains(function ($mapping) {
-            return $mapping->supplierProduct?->supplier?->hasActiveSubscription() === true;
+        $hasAvailableSupplier = $product->activeMappings->contains(function ($mapping) {
+            $supplier = $mapping->supplierProduct?->supplier;
+
+            return $supplier !== null && $supplier->status !== Supplier::STATUS_SUSPENDED;
         });
 
-        if (! $hasActiveSupplier) {
-            throw new DomainException('Produk dari supplier tanpa langganan aktif tidak dapat dipublikasikan.');
+        if (! $hasAvailableSupplier) {
+            throw new DomainException('Produk tidak memiliki supplier aktif yang tersedia.');
         }
 
         $product->update(['status' => Product::STATUS_ACTIVE]);
@@ -185,5 +188,72 @@ class ProductAggregatorService
         ]);
 
         return $price;
+    }
+
+    /**
+     * Bulk publish all available supplier_products from a supplier into storefront products.
+     */
+    public function publishAllFromSupplier(
+        Supplier $supplier,
+        string $pricingMode = ProductPrice::MODE_FIXED,
+        int $markupValue = 1500,
+        ?int $actorUserId = null
+    ): int {
+        if ($supplier->status === Supplier::STATUS_SUSPENDED) {
+            throw new DomainException('Supplier sedang ditangguhkan, tidak dapat mempublikasikan produk.');
+        }
+
+        if ($supplier->status !== Supplier::STATUS_ACTIVE) {
+            $supplier->update(['status' => Supplier::STATUS_ACTIVE]);
+        }
+
+        $supplierProducts = $supplier->supplierProducts()
+            ->where('stock_status', 'available')
+            ->get();
+
+        $published = 0;
+
+        foreach ($supplierProducts as $sp) {
+            $alreadyMapped = ProductMapping::where('supplier_product_id', $sp->id)
+                ->where('is_active', true)
+                ->exists();
+
+            if ($alreadyMapped) {
+                continue;
+            }
+
+            $raw = is_array($sp->raw) ? $sp->raw : [];
+            $catName = trim((string) ($raw['category'] ?? 'Produk Digital'));
+            if ($catName === '') {
+                $catName = 'Produk Digital';
+            }
+
+            $category = ProductCategory::firstOrCreate(
+                ['slug' => Str::slug($catName)],
+                ['name' => $catName]
+            );
+
+            $brand = trim((string) ($raw['brand'] ?? ''));
+            $desc = trim((string) ($raw['desc'] ?? ''));
+            if ($desc === '') {
+                $desc = $brand !== ''
+                    ? "Produk {$brand} resmi dari {$supplier->name}, diproses otomatis 24 jam."
+                    : "Produk digital resmi dari {$supplier->name}, diproses otomatis 24 jam.";
+            }
+
+            $this->createStorefrontProduct([
+                'supplier_product_id' => $sp->id,
+                'category_id' => $category->id,
+                'name' => $sp->name,
+                'description' => $desc,
+                'status' => Product::STATUS_ACTIVE,
+                'pricing_mode' => $pricingMode,
+                'markup_value' => $markupValue,
+            ], $actorUserId);
+
+            $published++;
+        }
+
+        return $published;
     }
 }

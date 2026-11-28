@@ -80,6 +80,7 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
             // Product Aggregator & Pricing
             Route::get('/supplier-products', [AdminProductController::class, 'supplierProducts']);
             Route::post('/suppliers/{supplier}/sync-products', [AdminProductController::class, 'syncSupplier']);
+            Route::post('/suppliers/{supplier}/publish-all', [AdminProductController::class, 'publishAllFromSupplier']);
             Route::post('/suppliers/{supplier}/manual-products', [AdminProductController::class, 'storeManualSupplierProduct']);
             Route::get('/products', [AdminProductController::class, 'index']);
             Route::post('/products', [AdminProductController::class, 'store']);

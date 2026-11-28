@@ -1,32 +1,16 @@
 <script setup lang="ts">
 const config = useRuntimeConfig();
 const router = useRouter();
-const activeCat = ref('');
-const activeDigestIdx = ref(0);
-const heroMode = ref<'search' | 'track'>('search');
 const heroInput = ref('');
-const liveTxCount = ref(14280);
+const howToBuyOpen = useState<boolean>('howToBuyOpen', () => false);
 
-function handleHeroAction() {
+function handleHeroSearch() {
   const val = heroInput.value.trim();
-  if (heroMode.value === 'track' && val) {
-    router.push(`/orders/${encodeURIComponent(val)}`);
-    return;
-  }
   if (val) {
     router.push(`/products?q=${encodeURIComponent(val)}`);
     return;
   }
   router.push('/products');
-}
-
-interface ProductItem {
-  id: number;
-  name: string;
-  slug: string;
-  description?: string;
-  sell_price: number;
-  category?: { name: string; slug: string };
 }
 
 interface CategoryItem {
@@ -36,127 +20,135 @@ interface CategoryItem {
   products_count: number;
 }
 
-const { data: productsResp } = await useFetch<{ data: ProductItem[] }>(
-  `${config.public.apiBase}/products`
-);
 const { data: categoriesResp } = await useFetch<{ data: CategoryItem[] }>(
   `${config.public.apiBase}/products/categories`
 );
 
-const filteredProducts = computed(() => {
-  const list = productsResp.value?.data || [];
-  if (!activeCat.value) return list;
-  return list.filter((p) => p.category?.slug === activeCat.value);
-});
+const activeCategories = computed(() =>
+  (categoriesResp.value?.data || [])
+    .filter((c) => c.products_count > 0)
+    .sort((a, b) => b.products_count - a.products_count)
+);
 
-const digestItems = [
-  { title: 'Mobile Legends 86 Diamonds — terkirim', detail: 'Pembayaran QRIS terverifikasi otomatis · diamond langsung masuk dalam 1.8 detik.' },
-  { title: 'Canva Pro Team 30 Hari — terkirim', detail: 'Pembayaran Virtual Account lunas · akses aplikasi premium terkirim dalam 2.3 detik.' },
-  { title: 'Steam Wallet IDR 60.000 — terkirim', detail: 'Pembayaran E-Wallet berhasil · kode voucher langsung tampil dalam 1.2 detik.' },
-];
+const totalProducts = computed(() =>
+  activeCategories.value.reduce((acc, c) => acc + c.products_count, 0)
+);
 
-const dotMatrix = Array.from({ length: 14 }, (_, col) =>
-  Array.from({ length: 6 }, (_, row) => ({
-    col,
-    row,
-    active: (col * 3 + row * 7) % 5 !== 0 && row >= (col % 3),
-    begin: `${((col + row) % 7) * 0.25}s`,
-  }))
-).flat();
-
-let digestTimer: ReturnType<typeof setInterval> | null = null;
-let countTimer: ReturnType<typeof setInterval> | null = null;
-onMounted(() => {
-  digestTimer = setInterval(() => {
-    activeDigestIdx.value = (activeDigestIdx.value + 1) % digestItems.length;
-  }, 2400);
-  countTimer = setInterval(() => {
-    liveTxCount.value += Math.floor(Math.random() * 3) + 1;
-  }, 1800);
-});
-onUnmounted(() => {
-  if (digestTimer) clearInterval(digestTimer);
-  if (countTimer) clearInterval(countTimer);
-});
-
-function rp(v: number) {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v);
+function categoryIconKey(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('pulsa')) return 'phone';
+  if (n.includes('data')) return 'wifi';
+  if (n.includes('game')) return 'game';
+  if (n.includes('e-money') || n.includes('emoney')) return 'wallet';
+  if (n.includes('pln') || n.includes('listrik')) return 'zap';
+  if (n.includes('voucher')) return 'ticket';
+  if (n.includes('tv')) return 'tv';
+  if (n.includes('sms') || n.includes('telpon')) return 'call';
+  if (n.includes('aplikasi')) return 'layers';
+  if (n.includes('gas')) return 'flame';
+  return 'bag';
 }
+
+const paymentChannels = [
+  { id: 'mandiri', label: "Livin' Mandiri", logo: '/logos/mandiri.svg' },
+  { id: 'bni', label: 'wondr BNI', logo: '/logos/wondr.svg' },
+  { id: 'dana', label: 'DANA', logo: '/logos/dana.svg' },
+  { id: 'ovo', label: 'OVO', logo: '/logos/ovo.svg' },
+  { id: 'bca', label: 'BCA Mobile', logo: '/logos/bca.svg' },
+  { id: 'bri', label: 'BRImo', logo: '/logos/bri.svg' },
+  { id: 'gopay', label: 'GoPay', logo: '/logos/gopay.svg' },
+  { id: 'qris', label: 'QRIS', logo: '/logos/qris.svg' },
+];
 </script>
 
 <template>
-  <div class="overflow-x-clip">
+  <div class="overflow-x-clip pb-16">
     <!-- ========================================================= -->
-    <!-- 1. HERO: Diagonal Obsidian Black -> Electric Blue -> Ice  -->
+    <!-- 1. SEAMLESS HERO (FOKUS PENJELASAN & CTA KE KATALOG)      -->
     <!-- ========================================================= -->
-    <section class="sentry-hero-bg text-white relative">
-      <div class="max-w-7xl mx-auto px-6 pt-16 pb-20 lg:pt-24 lg:pb-24">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <!-- Left Copy + Interactive Pill -->
-          <div class="lg:col-span-7 space-y-7">
-            <div class="anim-fade-up flex flex-wrap items-center gap-2.5 text-[11px] font-mono-code tracking-wider">
-              <span class="px-2.5 py-1 rounded border border-white/15 bg-white/5 text-zinc-300">
-                AMAN &amp; TERPERCAYA
+    <section class="sentry-hero-bg" style="color: var(--text)">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 lg:py-16">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div class="lg:col-span-8 space-y-5">
+            <div class="flex flex-wrap items-center gap-2 text-[11px] font-mono-code">
+              <span
+                class="px-2.5 py-1 rounded-full border flex items-center gap-1.5"
+                style="background: var(--surface); border-color: var(--border); color: var(--text)"
+              >
+                <span class="w-2 h-2 rounded-full bg-emerald-500" /> BUKA 24 JAM · OTOMATIS
               </span>
-              <span class="px-2.5 py-1 rounded border border-white/15 bg-white/5 text-zinc-300 flex items-center gap-1.5">
-                STATUS: <span class="w-2 h-2 rounded-full bg-emerald-400 anim-pulse-blue" /> ONLINE 24/7
+              <span
+                class="px-2.5 py-1 rounded-full border"
+                style="background: var(--surface-2); border-color: var(--border); color: var(--muted)"
+              >
+                TANPA DAFTAR AKUN
               </span>
             </div>
 
-            <h1 class="anim-fade-up anim-d1 text-4xl sm:text-5xl lg:text-[62px] font-semibold tracking-tight leading-[1.06]">
-              <span class="text-zinc-400 block">Diproses otomatis</span>
-              <span class="text-white block">sebelum pelanggan menunggu</span>
+            <h1 class="text-3xl sm:text-4xl lg:text-[48px] font-bold tracking-tight leading-[1.12]">
+              Topup Game, Pulsa &amp; Voucher Digital Otomatis
             </h1>
 
-            <p class="anim-fade-up anim-d2 text-sm sm:text-base text-zinc-300 max-w-lg leading-relaxed">
-              Belanja topup game, voucher digital, dan aplikasi premium lebih cepat. Bayar lewat QRIS, Virtual Account, atau e-wallet — pesanan langsung terkirim dalam hitungan detik.
+            <p class="text-sm sm:text-base max-w-2xl leading-[1.75]" style="color: var(--muted)">
+              <strong style="color: var(--text)">UniSell Digital</strong> adalah toko produk digital serba otomatis. Beli pulsa, paket data, token PLN, saldo e-money, hingga topup game — bayar lewat QRIS, Virtual Account, atau e-wallet, pesanan langsung masuk dalam hitungan detik.
             </p>
 
-            <!-- Interactive Pill Input (clean white in light mode, matte charcoal in dark mode) -->
-            <form
-              class="anim-fade-up anim-d3 max-w-lg rounded-full p-1.5 pl-3 flex items-center gap-2 shadow-2xl border"
-              style="background: var(--surface); border-color: var(--border); color: var(--text)"
-              @submit.prevent="handleHeroAction"
-            >
+            <!-- Primary CTA Buttons -->
+            <div class="flex flex-wrap items-center gap-2.5 pt-1">
+              <NuxtLink
+                to="/products"
+                class="px-6 py-3 rounded-xl text-sm font-semibold no-underline transition hover:opacity-90 tap-bounce inline-flex items-center gap-2"
+                style="background: var(--lp-accent); color: var(--lp-accent-fg)"
+              >
+                Buka Katalog ({{ totalProducts }} Produk) →
+              </NuxtLink>
+
+              <NuxtLink
+                to="/orders"
+                class="px-5 py-3 rounded-xl text-xs sm:text-sm font-semibold no-underline border transition inline-flex items-center gap-1.5 card-hover tap-bounce"
+                style="background: var(--surface); border-color: var(--border); color: var(--text)"
+              >
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                Lacak Pesanan
+              </NuxtLink>
+
               <button
                 type="button"
-                class="px-3 py-1.5 rounded-full text-[11px] font-bold shrink-0 cursor-pointer transition"
-                style="background: var(--surface-2); color: var(--text)"
-                @click="heroMode = heroMode === 'search' ? 'track' : 'search'"
+                class="px-4 py-3 rounded-xl text-xs sm:text-sm font-semibold border transition cursor-pointer tap-bounce"
+                style="background: var(--surface-2); border-color: var(--border); color: var(--text)"
+                @click="howToBuyOpen = true"
               >
-                {{ heroMode === 'search' ? '🛍️ Katalog' : '📦 Lacak' }}
+                Cara Belanja
               </button>
+            </div>
 
+            <!-- Quick Search -> goes directly to /products?q=... -->
+            <form
+              class="max-w-xl rounded-xl p-1 pl-3.5 flex items-center gap-2 border"
+              style="background: var(--surface); border-color: var(--border); color: var(--text)"
+              @submit.prevent="handleHeroSearch"
+            >
+              <svg class="w-4 h-4 shrink-0 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
               <input
                 v-model="heroInput"
                 type="text"
-                class="flex-1 bg-transparent border-0 outline-none text-xs sm:text-sm px-1"
+                class="flex-1 bg-transparent border-0 outline-none text-sm py-2"
                 style="color: var(--text)"
-                :placeholder="heroMode === 'search' ? 'Cari voucher, topup game, lisensi...' : 'Masukkan nomor order (US-...)'"
+                placeholder="Cari produk di katalog (Telkomsel, PLN, MLBB, ShopeePay...)"
               />
-
               <button
                 type="submit"
-                class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 cursor-pointer transition hover:scale-105 shadow-md"
+                class="px-4 py-2 rounded-lg font-semibold text-xs shrink-0 cursor-pointer transition hover:opacity-90 tap-bounce"
                 style="background: var(--lp-accent); color: var(--lp-accent-fg)"
               >
-                →
+                Cari
               </button>
             </form>
-
-            <div class="anim-fade-up anim-d4 flex flex-wrap items-center gap-4 text-xs text-zinc-300">
-              <NuxtLink to="/products" class="text-white font-semibold underline underline-offset-4">
-                Lihat semua produk →
-              </NuxtLink>
-              <a href="/admin/" class="text-zinc-300 hover:text-white no-underline">
-                Masuk Admin Console
-              </a>
-            </div>
           </div>
 
-          <!-- Right: 100% Native SVG SMIL Animated 3D Conveyor -> Storefront -> Rolling Rp Coins -->
-          <div class="lg:col-span-5 flex items-center justify-center">
-            <svg viewBox="0 0 440 350" class="w-full max-w-[460px] overflow-visible">
+          <!-- Right: 3D Isometric SVG (Desktop) -->
+          <div class="flex lg:col-span-4 items-center justify-center pt-2 lg:pt-0">
+            <svg viewBox="0 0 440 340" class="w-full max-w-[250px] sm:max-w-[290px] lg:max-w-[320px] overflow-visible">
               <defs>
                 <linearGradient id="hubRoof" x1="0" y1="0" x2="1" y2="1">
                   <stop offset="0%" stop-color="#FFFFFF" />
@@ -180,26 +172,18 @@ function rp(v: number) {
                 </linearGradient>
               </defs>
 
-              <!-- Isometric Floor Grid -->
-              <g stroke="rgba(255,255,255,0.14)" stroke-width="1">
+              <g stroke="var(--border)" stroke-width="1">
                 <line x1="30" y1="150" x2="310" y2="312" />
                 <line x1="80" y1="110" x2="360" y2="272" />
                 <line x1="60" y1="240" x2="300" y2="100" />
                 <line x1="140" y1="290" x2="380" y2="150" />
               </g>
 
-              <!-- Moving Conveyor Belt Track -->
-              <polygon
-                points="36,105 196,197 166,215 6,123"
-                fill="rgba(255,255,255,0.14)"
-                stroke="rgba(255,255,255,0.4)"
-                stroke-width="1"
-              />
-              <line x1="22" y1="114" x2="180" y2="205" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="8 8" opacity="0.65">
+              <polygon points="36,105 196,197 166,215 6,123" fill="var(--surface-2)" stroke="var(--border)" stroke-width="1" />
+              <line x1="22" y1="114" x2="180" y2="205" stroke="var(--lp-accent)" stroke-width="2" stroke-dasharray="8 8" opacity="0.75">
                 <animate attributeName="stroke-dashoffset" from="32" to="0" dur="1.1s" repeatCount="indefinite" />
               </line>
 
-              <!-- Supplier Box 1 sliding continuously on conveyor -->
               <g>
                 <animateTransform attributeName="transform" type="translate" values="-70,-40; 45,26" dur="3.2s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.82;1" dur="3.2s" repeatCount="indefinite" />
@@ -208,7 +192,6 @@ function rp(v: number) {
                 <polygon points="146,138 118,154 118,180 146,164" fill="#B45309" />
               </g>
 
-              <!-- Supplier Box 2 (offset 1.6s) -->
               <g opacity="0">
                 <animateTransform attributeName="transform" type="translate" values="-70,-40; 45,26" dur="3.2s" begin="1.6s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.82;1" dur="3.2s" begin="1.6s" repeatCount="indefinite" />
@@ -217,7 +200,6 @@ function rp(v: number) {
                 <polygon points="146,138 118,154 118,180 146,164" fill="#B45309" />
               </g>
 
-              <!-- Gently Floating UniSell Isometric Storefront Hub -->
               <g>
                 <animateTransform attributeName="transform" type="translate" values="0,0; 0,-9; 0,0" dur="3.6s" repeatCount="indefinite" />
                 <polygon points="245,98 338,152 245,206 152,152" fill="url(#hubRoof)" />
@@ -231,369 +213,172 @@ function rp(v: number) {
                 <polygon points="282,216 312,199 312,243 282,260" fill="#1E1B4B" />
               </g>
 
-              <!-- Rolling Rp Profit Coin 1 -->
               <g>
                 <animateTransform attributeName="transform" type="translate" values="0,0; 78,44" dur="2.6s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.82;1" dur="2.6s" repeatCount="indefinite" />
                 <ellipse cx="318" cy="244" rx="15" ry="19" fill="url(#coinGrad)" stroke="#2555F4" stroke-width="2" />
-                <text x="318" y="248" text-anchor="middle" fill="#1E1B4B" font-size="10.5" font-family="JetBrains Mono, monospace" font-weight="800">
-                  Rp
-                </text>
+                <text x="318" y="248" text-anchor="middle" fill="#1E1B4B" font-size="10.5" font-family="JetBrains Mono, monospace" font-weight="800">Rp</text>
               </g>
 
-              <!-- Rolling Rp Profit Coin 2 (offset 1.3s) -->
               <g opacity="0">
                 <animateTransform attributeName="transform" type="translate" values="0,0; 78,44" dur="2.6s" begin="1.3s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.82;1" dur="2.6s" begin="1.3s" repeatCount="indefinite" />
                 <ellipse cx="318" cy="244" rx="15" ry="19" fill="url(#coinGrad)" stroke="#EC4899" stroke-width="2" />
-                <text x="318" y="248" text-anchor="middle" fill="#1E1B4B" font-size="10.5" font-family="JetBrains Mono, monospace" font-weight="800">
-                  Rp
-                </text>
+                <text x="318" y="248" text-anchor="middle" fill="#1E1B4B" font-size="10.5" font-family="JetBrains Mono, monospace" font-weight="800">Rp</text>
               </g>
 
-              <text x="80" y="92" fill="#BFDBFE" font-size="9.5" font-family="JetBrains Mono, monospace">
-                PRODUK RESMI MASUK →
-              </text>
-              <text x="318" y="322" fill="#FFFFFF" font-size="9.5" font-family="JetBrains Mono, monospace" font-weight="600">
-                KIRIM INSTAN 24 JAM
-              </text>
+              <text x="64" y="90" fill="var(--lp-accent)" font-size="11.5" font-family="JetBrains Mono, monospace" font-weight="600">STOK RESMI OTOMATIS →</text>
+              <text x="292" y="324" fill="var(--text)" font-size="11.5" font-family="JetBrains Mono, monospace" font-weight="600">KIRIM INSTAN 24 JAM</text>
             </svg>
-          </div>
-        </div>
-
-        <!-- Trusted / Channel Strip -->
-        <div class="mt-16 pt-8 border-t border-white/15 flex flex-wrap items-center justify-between gap-6">
-          <div class="text-[10px] font-mono-code uppercase tracking-widest text-white/70">
-            METODE PEMBAYARAN &amp; LAYANAN
-          </div>
-          <div class="flex flex-wrap items-center gap-8 text-sm font-bold tracking-tight text-white/90">
-            <span>▲ QRIS</span>
-            <span>◈ Virtual Account</span>
-            <span>● E-Wallet</span>
-            <span>⚡ Kirim Instan</span>
-            <span>✓ Garansi Refund</span>
           </div>
         </div>
       </div>
     </section>
 
     <!-- ========================================================= -->
-    <!-- 2. 4-COLUMN ANIMATED ISOMETRIC ARCHITECTURE SECTION       -->
+    <!-- 2. LAYANAN YANG TERSEDIA (KLIK -> LANGSUNG KE KATALOG)    -->
     <!-- ========================================================= -->
-    <section id="arsitektur" class="sentry-mist-top py-20">
-      <div class="max-w-7xl mx-auto px-6 space-y-12">
-        <div class="max-w-2xl space-y-3">
-          <h2 class="text-3xl md:text-5xl font-semibold tracking-tight leading-[1.1]">
-            <span class="block">Dibangun untuk transaksi</span>
-            <span class="block" style="color: var(--lp-accent)">yang benar-benar instan</span>
-          </h2>
-          <p class="text-sm" style="color: var(--muted)">
-            UniSell memangkas proses manual sehingga setiap pesanan dari pembayaran sampai pengiriman selesai dalam hitungan detik.
-          </p>
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 pt-4 space-y-4">
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold">Layanan Produk Digital</h2>
+          <p class="text-sm mt-0.5 leading-relaxed" style="color: var(--muted)">Pilih kategori untuk melihat daftar harga lengkap di katalog.</p>
         </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 border-t border-b" style="border-color: var(--border)">
-          <!-- Col 1 -->
-          <div class="p-6 lg:border-r space-y-6 flex flex-col justify-between" style="border-color: var(--border)">
-            <div class="text-[10px] font-mono-code uppercase tracking-widest" style="color: var(--muted)">01 · OTOMATIS</div>
-            <svg viewBox="0 0 180 140" class="w-44 h-32 mx-auto overflow-visible">
-              <g>
-                <animateTransform attributeName="transform" type="translate" values="0,0; 0,-4; 0,0" dur="3.4s" repeatCount="indefinite" />
-                <polygon points="90,82 145,108 90,134 35,108" fill="none" stroke="var(--muted)" stroke-width="1.2" opacity="0.5" />
-              </g>
-              <g>
-                <animateTransform attributeName="transform" type="translate" values="0,0; 0,-10; 0,0" dur="3.4s" repeatCount="indefinite" />
-                <polygon points="90,56 145,82 90,108 35,82" fill="none" stroke="var(--muted)" stroke-width="1.2" opacity="0.75" />
-              </g>
-              <g>
-                <animateTransform attributeName="transform" type="translate" values="0,0; 0,-16; 0,0" dur="3.4s" repeatCount="indefinite" />
-                <polygon points="90,30 145,56 90,82 35,56" fill="rgba(37,85,244,0.12)" stroke="#2555F4" stroke-width="1.6" />
-              </g>
-            </svg>
-            <div class="space-y-1.5">
-              <h3 class="text-sm font-bold">Belanja tanpa antre</h3>
-              <p class="text-xs leading-relaxed" style="color: var(--muted)">
-                Pesan kapan saja siang atau malam tanpa perlu menunggu balasan admin secara manual.
-              </p>
-            </div>
-          </div>
-
-          <!-- Col 2 -->
-          <div class="p-6 lg:border-r space-y-6 flex flex-col justify-between" style="border-color: var(--border)">
-            <div class="text-[10px] font-mono-code uppercase tracking-widest" style="color: var(--muted)">02 · AMAN</div>
-            <svg viewBox="0 0 180 140" class="w-44 h-32 mx-auto overflow-visible">
-              <polygon points="90,68 145,95 90,122 35,95" fill="none" stroke="var(--muted)" stroke-width="1.2" opacity="0.5" />
-              <line x1="90" y1="24" x2="90" y2="95" stroke="#2555F4" stroke-width="1.5" stroke-dasharray="4 4">
-                <animate attributeName="stroke-dashoffset" from="16" to="0" dur="1s" repeatCount="indefinite" />
-              </line>
-              <circle cx="90" cy="48" r="14" fill="rgba(37,85,244,0.12)" stroke="#2555F4" stroke-width="1.5">
-                <animate attributeName="r" values="12;17;12" dur="2.2s" repeatCount="indefinite" />
-              </circle>
-              <circle cx="90" cy="48" r="4" fill="#2555F4" />
-            </svg>
-            <div class="space-y-1.5">
-              <h3 class="text-sm font-bold">Pembayaran terverifikasi</h3>
-              <p class="text-xs leading-relaxed" style="color: var(--muted)">
-                Sistem memastikan setiap pembayaran valid dan terlindungi dari transaksi ganda.
-              </p>
-            </div>
-          </div>
-
-          <!-- Col 3 -->
-          <div class="p-6 lg:border-r space-y-6 flex flex-col justify-between" style="border-color: var(--border)">
-            <div class="text-[10px] font-mono-code uppercase tracking-widest" style="color: var(--muted)">03 · LENGKAP</div>
-            <svg viewBox="0 0 180 140" class="w-44 h-32 mx-auto overflow-visible">
-              <g stroke="var(--muted)" stroke-width="1" fill="rgba(37,85,244,0.08)">
-                <animateTransform attributeName="transform" type="translate" values="0,0; 0,-8; 0,0" dur="3s" repeatCount="indefinite" />
-                <polygon points="60,26 78,35 60,44 42,35" />
-                <polygon points="90,14 108,23 90,32 72,23" />
-                <polygon points="120,26 138,35 120,44 102,35" />
-                <polygon points="90,38 108,47 90,56 72,47" stroke="#2555F4" fill="rgba(37,85,244,0.22)" />
-              </g>
-              <line x1="90" y1="56" x2="90" y2="88" stroke="#2555F4" stroke-width="1.5" stroke-dasharray="4 3">
-                <animate attributeName="stroke-dashoffset" from="14" to="0" dur="0.9s" repeatCount="indefinite" />
-              </line>
-              <polygon points="90,88 130,108 90,128 50,108" fill="rgba(37,85,244,0.12)" stroke="#2555F4" stroke-width="1.5" />
-            </svg>
-            <div class="space-y-1.5">
-              <h3 class="text-sm font-bold">Banyak pilihan produk</h3>
-              <p class="text-xs leading-relaxed" style="color: var(--muted)">
-                Topup game, voucher digital, hingga aplikasi premium dari supplier resmi yang selalu aktif.
-              </p>
-            </div>
-          </div>
-
-          <!-- Col 4 -->
-          <div class="p-6 space-y-6 flex flex-col justify-between">
-            <div class="text-[10px] font-mono-code uppercase tracking-widest" style="color: var(--muted)">04 · TRANSPARAN</div>
-            <svg viewBox="0 0 180 140" class="w-44 h-32 mx-auto overflow-visible">
-              <polygon points="90,86 142,110 90,134 38,110" fill="none" stroke="var(--muted)" stroke-width="1.2" opacity="0.5" />
-              <g>
-                <animateTransform attributeName="transform" type="translate" values="0,0; 0,-12; 0,0" dur="3.2s" repeatCount="indefinite" />
-                <polygon points="90,30 124,47 90,64 56,47" fill="rgba(37,85,244,0.22)" stroke="#2555F4" stroke-width="1.5" />
-                <polygon points="56,47 90,64 90,98 56,81" fill="rgba(37,85,244,0.1)" stroke="#2555F4" stroke-width="1.2" />
-                <polygon points="124,47 90,64 90,98 124,81" fill="rgba(37,85,244,0.16)" stroke="#2555F4" stroke-width="1.2" />
-              </g>
-            </svg>
-            <div class="space-y-1.5">
-              <h3 class="text-sm font-bold">Harga jelas &amp; garansi</h3>
-              <p class="text-xs leading-relaxed" style="color: var(--muted)">
-                Harga transparan dalam Rupiah dan garansi pengembalian dana penuh bila pesanan gagal.
-              </p>
-            </div>
-          </div>
-        </div>
+        <NuxtLink to="/products" class="text-xs font-semibold no-underline shrink-0" style="color: var(--lp-accent)">
+          Lihat Katalog →
+        </NuxtLink>
       </div>
-    </section>
 
-    <!-- ========================================================= -->
-    <!-- 3. ANIMATED ANALYTICS & LIVE DIGEST                       -->
-    <!-- ========================================================= -->
-    <section id="analitik" class="py-20">
-      <div class="max-w-7xl mx-auto px-6 space-y-10">
-        <div class="max-w-2xl space-y-2">
-          <h2 class="text-3xl md:text-5xl font-semibold tracking-tight leading-[1.1]">
-            <span class="block">Semua transaksi &amp; margin</span>
-            <span class="block" style="color: var(--lp-accent)">terpantau otomatis</span>
-          </h2>
-          <p class="text-sm" style="color: var(--muted)">
-            Setiap pembayaran masuk langsung diverifikasi, diteruskan ke supplier, dan tercatat ke pembukuan tanpa input manual.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-          <!-- Card 1: Live Animated Dot-Matrix -->
-          <div class="lg:col-span-4 rounded-2xl border p-5 flex flex-col justify-between space-y-4 card-hover" style="background: var(--surface); border-color: var(--border)">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold">Transaksi per Jam</span>
-              <span class="text-[10px] font-mono-code" style="color: var(--lp-accent)">● Live Matrix</span>
-            </div>
-            <div class="flex gap-6">
-              <div>
-                <div class="text-2xl font-bold font-mono-code">{{ liveTxCount.toLocaleString('id-ID') }}</div>
-                <div class="text-[11px]" style="color: var(--muted)">Total Delivered</div>
-              </div>
-              <div>
-                <div class="text-2xl font-bold font-mono-code" style="color: var(--lp-accent)">99.8%</div>
-                <div class="text-[11px]" style="color: var(--muted)">Success Rate</div>
-              </div>
-            </div>
-            <svg viewBox="0 0 280 120" class="w-full h-28">
-              <circle
-                v-for="d in dotMatrix"
-                :key="`${d.col}-${d.row}`"
-                :cx="12 + d.col * 19.5"
-                :cy="14 + d.row * 18"
-                r="4"
-                :fill="d.active ? 'var(--lp-dot)' : 'var(--border)'"
-                :opacity="d.active ? 0.9 : 0.4"
-              >
-                <animate
-                  v-if="d.active"
-                  attributeName="opacity"
-                  values="0.2;1;0.2"
-                  dur="2.2s"
-                  :begin="d.begin"
-                  repeatCount="indefinite"
-                />
-              </circle>
-            </svg>
-          </div>
-
-          <!-- Card 2: Animated Funnel Ribbon Wave -->
-          <div class="lg:col-span-4 rounded-2xl border p-5 flex flex-col justify-between space-y-4 card-hover" style="background: var(--surface); border-color: var(--border)">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold">Funnel Settlement</span>
-              <span class="text-[10px] font-mono-code" style="color: var(--muted)">Avg 2.1s</span>
-            </div>
-            <div class="flex justify-between text-xs font-mono-code">
-              <div>
-                <div class="text-[10px]" style="color: var(--muted)">Paid</div>
-                <div class="text-base font-bold">100%</div>
-              </div>
-              <div>
-                <div class="text-[10px]" style="color: var(--muted)">Verified</div>
-                <div class="text-base font-bold" style="color: #2555F4">99.9%</div>
-              </div>
-              <div>
-                <div class="text-[10px]" style="color: var(--muted)">Delivered</div>
-                <div class="text-base font-bold" style="color: #22C55E">99.8%</div>
-              </div>
-            </div>
-            <svg viewBox="0 0 280 110" class="w-full h-28 overflow-visible">
-              <defs>
-                <linearGradient id="ribbonGrad" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stop-color="#93C5FD" stop-opacity="0.45" />
-                  <stop offset="50%" stop-color="#2555F4" stop-opacity="0.75" />
-                  <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.35" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M 8 55 C 55 20, 95 28, 140 16 C 185 28, 225 32, 272 55 C 225 78, 185 82, 140 94 C 95 82, 55 90, 8 55 Z"
-                fill="url(#ribbonGrad)"
-              />
-              <!-- Flowing energy signal dot along funnel -->
-              <circle r="5" fill="#FFFFFF" stroke="#2555F4" stroke-width="2">
-                <animateMotion dur="2.2s" repeatCount="indefinite" path="M 8 55 Q 140 18 272 55" />
-              </circle>
-              <circle cx="65" cy="55" r="14" fill="var(--surface)" stroke="#2555F4" stroke-width="1.5" />
-              <text x="65" y="58" text-anchor="middle" font-size="8" font-family="JetBrains Mono" fill="var(--text)">QRIS</text>
-              <circle cx="140" cy="55" r="16" fill="#2555F4">
-                <animate attributeName="r" values="15;18;15" dur="1.8s" repeatCount="indefinite" />
-              </circle>
-              <text x="140" y="58" text-anchor="middle" font-size="8" font-family="JetBrains Mono" fill="#FFFFFF">API</text>
-              <circle cx="215" cy="55" r="14" fill="var(--surface)" stroke="#22C55E" stroke-width="1.5" />
-              <text x="215" y="58" text-anchor="middle" font-size="8" font-family="JetBrains Mono" fill="var(--text)">SENT</text>
-            </svg>
-          </div>
-
-          <!-- Card 3: Floating Live Delivery Digest -->
-          <div class="lg:col-span-4 rounded-2xl border p-5 space-y-4 shadow-lg card-hover" style="background: var(--surface); border-color: var(--border)">
-            <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--border)">
-              <span class="text-sm font-bold">Live Delivery Digest</span>
-              <span class="text-[10px] font-mono-code px-2 py-0.5 rounded" style="background: var(--surface-2); color: var(--lp-accent)">
-                REALTIME
-              </span>
-            </div>
-
-            <div class="space-y-3">
-              <div
-                v-for="(d, idx) in digestItems"
-                :key="d.title"
-                class="p-3 rounded-xl border transition-all duration-300"
-                :style="
-                  activeDigestIdx === idx
-                    ? { background: 'var(--surface-2)', borderColor: 'var(--lp-accent)', transform: 'translateX(4px)' }
-                    : { background: 'transparent', borderColor: 'var(--border)', opacity: 0.72 }
-                "
-              >
-                <div class="flex items-center gap-2 text-xs font-bold">
-                  <span class="w-1.5 h-1.5 rounded-full" :style="{ background: activeDigestIdx === idx ? '#22C55E' : 'var(--muted)' }" />
-                  <span class="truncate">{{ d.title }}</span>
-                </div>
-                <p class="text-[11px] mt-1 leading-relaxed" style="color: var(--muted)">
-                  {{ d.detail }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ========================================================= -->
-    <!-- 4. LIVE KATALOG PRODUK INSTAN                             -->
-    <!-- ========================================================= -->
-    <section class="py-16 border-t" style="border-color: var(--border)">
-      <div class="max-w-7xl mx-auto px-6 space-y-6">
-        <div class="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <span class="text-xs font-mono-code uppercase" style="color: var(--lp-accent)">Katalog Live</span>
-            <h2 class="text-2xl md:text-3xl font-bold mt-1">Beli Produk Digital Sekarang</h2>
-          </div>
-
-          <div class="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              class="px-3.5 py-1.5 rounded-md text-xs font-semibold border transition cursor-pointer"
-              :style="
-                activeCat === ''
-                  ? { background: 'var(--lp-accent)', color: 'var(--lp-accent-fg)', borderColor: 'var(--lp-accent)' }
-                  : { background: 'var(--surface)', color: 'var(--muted)', borderColor: 'var(--border)' }
-              "
-              @click="activeCat = ''"
-            >
-              Semua
-            </button>
-            <button
-              v-for="cat in categoriesResp?.data || []"
-              :key="cat.id"
-              type="button"
-              class="px-3.5 py-1.5 rounded-md text-xs font-semibold border transition cursor-pointer"
-              :style="
-                activeCat === cat.slug
-                  ? { background: 'var(--lp-accent)', color: 'var(--lp-accent-fg)', borderColor: 'var(--lp-accent)' }
-                  : { background: 'var(--surface)', color: 'var(--muted)', borderColor: 'var(--border)' }
-              "
-              @click="activeCat = cat.slug"
-            >
-              {{ cat.name }} ({{ cat.products_count }})
-            </button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <NuxtLink
-            v-for="product in filteredProducts"
-            :key="product.id"
-            :to="`/products/${product.slug}`"
-            class="p-6 rounded-2xl border flex flex-col justify-between gap-4 no-underline card-hover"
-            style="background: var(--surface); border-color: var(--border)"
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <NuxtLink
+          v-for="(cat, idx) in activeCategories.slice(0, 8)"
+          :key="cat.id"
+          :to="`/products?category=${cat.slug}`"
+          class="cat-card p-3 sm:p-3.5 rounded-2xl flex items-center gap-3.5 no-underline transition tap-bounce hover:bg-black/5 dark:hover:bg-white/5"
+          style="color: var(--text)"
+        >
+          <span
+            class="cat-icon-box w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style="background: var(--surface-2); color: var(--lp-accent)"
           >
-            <div class="space-y-2.5">
-              <div class="flex items-center justify-between">
-                <span
-                  v-if="product.category"
-                  class="px-2.5 py-1 rounded text-[11px] font-semibold"
-                  style="background: var(--surface-2); color: var(--lp-accent)"
-                >
-                  {{ product.category.name }}
-                </span>
-                <span class="text-[11px] font-mono-code text-emerald-500">● Instan</span>
-              </div>
-              <h3 class="text-base font-bold" style="color: var(--text)">{{ product.name }}</h3>
-              <p class="text-xs line-clamp-2" style="color: var(--muted)">
-                {{ product.description }}
-              </p>
-            </div>
-            <div class="flex items-center justify-between pt-4 border-t" style="border-color: var(--border)">
-              <span class="text-lg font-bold font-mono-code" style="color: var(--text)">
-                {{ rp(product.sell_price) }}
-              </span>
-              <span class="px-3.5 py-1.5 rounded-md text-xs font-semibold" style="background: var(--lp-accent); color: var(--lp-accent-fg)">
-                Beli →
-              </span>
-            </div>
+            <span class="cat-icon-bounce" :style="{ animationDelay: `${idx * 0.28}s` }">
+            <svg v-if="categoryIconKey(cat.name) === 'phone'" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+            <svg v-else-if="categoryIconKey(cat.name) === 'wifi'" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/></svg>
+            <svg v-else-if="categoryIconKey(cat.name) === 'game'" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg>
+            <svg v-else-if="categoryIconKey(cat.name) === 'wallet'" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+            <svg v-else-if="categoryIconKey(cat.name) === 'zap'" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
+            <svg v-else-if="categoryIconKey(cat.name) === 'ticket'" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/></svg>
+            <svg v-else-if="categoryIconKey(cat.name) === 'tv'" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+            <svg v-else-if="categoryIconKey(cat.name) === 'call'" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <svg v-else-if="categoryIconKey(cat.name) === 'layers'" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
+            <svg v-else class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            </span>
+          </span>
+          <div class="min-w-0">
+            <div class="text-xs sm:text-sm font-bold truncate">{{ cat.name }}</div>
+            <div class="text-xs font-mono-code mt-0.5" style="color: var(--muted)">{{ cat.products_count }} pilihan</div>
+          </div>
+        </NuxtLink>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- 3. KENAPA BELANJA DI UNISELL (PENJELASAN SINGKAT)         -->
+    <!-- ========================================================= -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 pt-12 mt-8 border-t space-y-6" style="border-color: var(--border)">
+      <div>
+        <h2 class="text-base sm:text-lg font-bold">Kenapa Belanja di UniSell Digital?</h2>
+        <p class="text-sm mt-0.5 leading-relaxed" style="color: var(--muted)">Dirancang agar setiap transaksi digital cepat, transparan, dan aman.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div class="py-2 pr-2 space-y-2.5">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background: var(--surface-2); color: var(--lp-accent)">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
+          </div>
+          <h3 class="text-sm font-bold">Proses Otomatis 24/7</h3>
+          <p class="text-[13px] leading-[1.65]" style="color: var(--muted)">Pesan kapan saja siang atau malam tanpa menunggu balasan admin.</p>
+        </div>
+
+        <div class="py-2 pr-2 space-y-2.5">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background: var(--surface-2); color: var(--lp-accent)">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+          </div>
+          <h3 class="text-sm font-bold">Pembayaran Lengkap</h3>
+          <p class="text-[13px] leading-[1.65]" style="color: var(--muted)">Mendukung QRIS, Virtual Account bank besar, hingga e-wallet populer.</p>
+        </div>
+
+        <div class="py-2 pr-2 space-y-2.5">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background: var(--surface-2); color: var(--lp-accent)">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" x2="22" y1="11" y2="11"/></svg>
+          </div>
+          <h3 class="text-sm font-bold">Tanpa Daftar Akun</h3>
+          <p class="text-[13px] leading-[1.65]" style="color: var(--muted)">Langsung pilih produk, isi nomor tujuan, bayar, dan pantau lewat nomor order.</p>
+        </div>
+
+        <div class="py-2 pr-2 space-y-2.5">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background: var(--surface-2); color: #22C55E">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+          </div>
+          <h3 class="text-sm font-bold">Garansi Refund</h3>
+          <p class="text-[13px] leading-[1.65]" style="color: var(--muted)">Setiap pesanan gagal otomatis terpantau dan dilindungi pengembalian dana.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- 4. MARQUEE METODE PEMBAYARAN (LOGO ASLI)                  -->
+    <!-- ========================================================= -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 pt-12 space-y-3">
+      <div class="text-center text-sm font-medium" style="color: var(--muted)">
+        Mendukung pembayaran otomatis lewat bank &amp; e-wallet favoritmu
+      </div>
+      <div class="cat-marquee-viewport py-2">
+        <div v-for="copy in 2" :key="copy" class="cat-marquee-group" :aria-hidden="copy === 2">
+          <div
+            v-for="(ch, idx) in [...paymentChannels, ...paymentChannels]"
+            :key="`${copy}-${ch.id}-${idx}`"
+            class="payment-pill shrink-0 h-14 px-5 rounded-2xl flex items-center justify-center"
+            :title="ch.label"
+          >
+            <img
+              :src="ch.logo"
+              :alt="ch.label"
+              :class="ch.id === 'qris' ? 'h-7 sm:h-8 w-auto max-w-[116px] object-contain logo-invert-dark' : 'h-7 sm:h-8 w-auto max-w-[116px] object-contain logo-boost-dark'"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- 5. CTA PENUTUP KE KATALOG                                 -->
+    <!-- ========================================================= -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 pt-10">
+      <div
+        class="pt-8 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        style="border-color: var(--border)"
+      >
+        <div class="space-y-1 max-w-xl">
+          <h2 class="text-base font-bold">Siap mulai transaksi digitalmu?</h2>
+          <p class="text-sm leading-relaxed" style="color: var(--muted)">
+            Buka katalog lengkap untuk melihat daftar harga terbaru dan langsung checkout tanpa login.
+          </p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <NuxtLink
+            to="/products"
+            class="px-5 py-2.5 rounded-xl text-xs font-semibold no-underline tap-bounce"
+            style="background: var(--lp-accent); color: var(--lp-accent-fg)"
+          >
+            Lihat Katalog →
+          </NuxtLink>
+          <NuxtLink
+            to="/help"
+            class="px-4 py-2.5 rounded-xl text-xs font-semibold border no-underline tap-bounce"
+            style="background: var(--surface-2); border-color: var(--border); color: var(--text)"
+          >
+            Bantuan
           </NuxtLink>
         </div>
       </div>

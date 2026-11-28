@@ -14,53 +14,59 @@ class ProductAggregatorAndPricingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_cannot_publish_product_from_supplier_without_active_subscription(): void
+    public function test_can_publish_without_subscription_but_blocked_when_supplier_suspended(): void
     {
         $this->seed(DatabaseSeeder::class);
         $admin = User::where('email', 'admin@unisell.local')->firstOrFail();
 
-        $supplier = Supplier::create([
-            'name' => 'Unsubscribed Supplier',
+        $suspendedSupplier = Supplier::create([
+            'name' => 'Suspended Supplier',
             'auth_method' => 'manual',
-            'status' => Supplier::STATUS_INACTIVE,
+            'status' => Supplier::STATUS_SUSPENDED,
         ]);
 
-        $supplierProduct = SupplierProduct::create([
-            'supplier_id' => $supplier->id,
-            'external_id' => 'MANUAL-01',
-            'name' => 'E-Book Premium',
+        $suspendedSp = SupplierProduct::create([
+            'supplier_id' => $suspendedSupplier->id,
+            'external_id' => 'SUSP-01',
+            'name' => 'Suspended Product',
             'cost_price' => 30000,
             'stock_status' => 'available',
         ]);
 
-        // Attempt direct publish -> must be blocked (422)
+        // Suspended supplier -> blocked (422)
         $this->actingAs($admin, 'sanctum')
             ->postJson('/api/v1/admin/products', [
-                'supplier_product_id' => $supplierProduct->id,
-                'name' => 'E-Book Premium Storefront',
+                'supplier_product_id' => $suspendedSp->id,
+                'name' => 'Suspended Product Storefront',
                 'status' => 'active',
                 'pricing_mode' => 'fixed',
                 'markup_value' => 10000,
             ])
-            ->assertUnprocessable()
-            ->assertJsonPath('error.code', 'SUPPLIER_SUBSCRIPTION_REQUIRED');
+            ->assertUnprocessable();
 
-        // Draft creation is allowed, then publish attempt must still be blocked
-        $draftResp = $this->actingAs($admin, 'sanctum')
-            ->postJson('/api/v1/admin/products', [
-                'supplier_product_id' => $supplierProduct->id,
-                'name' => 'E-Book Premium Draft',
-                'status' => 'draft',
-                'pricing_mode' => 'fixed',
-                'markup_value' => 10000,
-            ])->assertCreated();
+        // Active supplier without subscription -> allowed & bulk publish works
+        $directSupplier = Supplier::create([
+            'name' => 'Digiflazz Direct',
+            'auth_method' => 'digiflazz',
+            'status' => Supplier::STATUS_ACTIVE,
+        ]);
 
-        $productId = $draftResp->json('data.id');
+        SupplierProduct::create([
+            'supplier_id' => $directSupplier->id,
+            'external_id' => 'DF-TEST-01',
+            'name' => 'Pulsa 10.000',
+            'cost_price' => 10500,
+            'stock_status' => 'available',
+            'raw' => ['category' => 'Pulsa', 'brand' => 'Telkomsel'],
+        ]);
 
         $this->actingAs($admin, 'sanctum')
-            ->postJson("/api/v1/admin/products/{$productId}/publish")
-            ->assertUnprocessable()
-            ->assertJsonPath('error.code', 'SUPPLIER_SUBSCRIPTION_REQUIRED');
+            ->postJson("/api/v1/admin/suppliers/{$directSupplier->id}/publish-all", [
+                'pricing_mode' => 'fixed',
+                'markup_value' => 1500,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.published_count', 1);
     }
 
     public function test_pricing_modes_net_profit_and_break_even_simulation(): void

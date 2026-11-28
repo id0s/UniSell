@@ -11,13 +11,12 @@ const message = ref('');
 const form = ref({
   name: '',
   website: '',
-  auth_method: 'api_key',
+  auth_method: 'digiflazz',
   api_key: '',
   api_secret: '',
 });
 
-const activePanel = ref<{ supplierId: number; mode: 'package' | 'manual' | 'credentials' } | null>(null);
-const pkgForm = ref({ name: 'Paket Pro 30 Hari', price: 150000, period_days: 30, product_limit: 100 });
+const activePanel = ref<{ supplierId: number; mode: 'manual' | 'credentials' } | null>(null);
 const manualForm = ref({ external_id: '', name: '', cost_price: 25000 });
 const credForm = ref({ api_id: '', username: '', api_key: '', api_secret: '', base_url: '', sandbox: true });
 
@@ -29,9 +28,6 @@ interface SupplierItem {
   health_status: string;
   balance: number;
   has_credentials: boolean;
-  has_active_subscription: boolean;
-  active_subscription?: { id: number; ends_at: string; package?: { name: string; price: number } } | null;
-  packages: Array<{ id: number; name: string; price: number; period_days: number }>;
   supplier_products_count: number;
 }
 
@@ -54,19 +50,8 @@ async function createSupplier() {
     };
   }
   await apiRequest('/admin/suppliers', { method: 'POST', body: JSON.stringify(payload) }, auth.token);
-  form.value = { name: '', website: '', auth_method: 'api_key', api_key: '', api_secret: '' };
-  message.value = '1) Supplier ditambahkan (kredensial terenkripsi). Lanjut buat paket & aktifkan langganan.';
-  refetch();
-}
-
-async function createPackage(supplierId: number) {
-  await apiRequest(
-    `/admin/suppliers/${supplierId}/packages`,
-    { method: 'POST', body: JSON.stringify(pkgForm.value) },
-    auth.token
-  );
-  activePanel.value = null;
-  message.value = '2) Paket langganan dibuat. Klik "Aktifkan Paket" untuk mulai berlangganan.';
+  form.value = { name: '', website: '', auth_method: 'digiflazz', api_key: '', api_secret: '' };
+  message.value = 'Supplier ditambahkan (aktif). Lanjut atur API Key, cek koneksi, lalu Sync Produk.';
   refetch();
 }
 
@@ -124,31 +109,26 @@ async function syncProducts(id: number) {
       { method: 'POST' },
       auth.token
     );
-    message.value = `Sinkronisasi selesai: ${res.data.synced_count} produk masuk supplier_products. Lanjut pilih di menu Products & Pricing.`;
+    message.value = `Sinkronisasi selesai: ${res.data.synced_count} produk masuk supplier_products. Klik "Publikasikan Semua" atau pilih di menu Products & Pricing.`;
     refetch();
   } catch (e: any) {
     message.value = e?.message || 'Gagal melakukan sinkronisasi produk supplier.';
   }
 }
 
-async function cancelSub(subscriptionId: number) {
-  await apiRequest(
-    '/admin/subscriptions/cancel',
-    { method: 'POST', body: JSON.stringify({ subscription_id: subscriptionId }) },
-    auth.token
-  );
-  message.value = 'Langganan dibatalkan — produk terkait otomatis dikunci untuk penjualan baru.';
-  refetch();
-}
-
-async function subscribePackage(supplierId: number, packageId: number) {
-  await apiRequest(
-    '/admin/subscriptions/subscribe',
-    { method: 'POST', body: JSON.stringify({ supplier_id: supplierId, package_id: packageId }) },
-    auth.token
-  );
-  message.value = 'Langganan aktif! Sekarang Anda bisa Sync/Upload Produk lalu publikasikan di menu Products & Pricing.';
-  refetch();
+async function publishAll(id: number) {
+  message.value = '';
+  try {
+    const res = await apiRequest<{ data: { published_count: number } }>(
+      `/admin/suppliers/${id}/publish-all`,
+      { method: 'POST', body: JSON.stringify({ pricing_mode: 'fixed', markup_value: 1500 }) },
+      auth.token
+    );
+    message.value = `Berhasil mempublikasikan ${res.data.published_count} produk baru ke katalog storefront (markup +Rp1.500).`;
+    refetch();
+  } catch (e: any) {
+    message.value = e?.message || 'Gagal mempublikasikan produk.';
+  }
 }
 
 function rp(v: number) {
@@ -159,8 +139,8 @@ function rp(v: number) {
 <template>
   <AdminLayout
     section="Operations"
-    title="Suppliers & Langganan"
-    subtitle="Alur: 1) Tambah Supplier → 2) Buat Paket & Aktifkan Langganan → 3) Sync API / Upload Produk Manual → 4) Publikasikan di Products"
+    title="Suppliers & Koneksi API"
+    subtitle="Alur: 1) Tambah Supplier (Digiflazz / API / Manual) → 2) Atur API Key & Cek Health → 3) Sync Produk → 4) Publikasikan ke Toko"
   >
     <div v-if="message" class="p-3.5 rounded-xl border text-xs font-medium" style="background: var(--surface-2); border-color: var(--border); color: var(--text)">
       {{ message }}
@@ -169,11 +149,11 @@ function rp(v: number) {
     <section class="unisell-card p-5 space-y-4">
       <h2 class="text-sm font-bold">1. Tambah Supplier Baru</h2>
       <form class="grid grid-cols-1 md:grid-cols-3 gap-3" @submit.prevent="createSupplier">
-        <input v-model="form.name" required class="unisell-input text-sm" placeholder="Nama Supplier (mis. DigiFlazz / Partner A)" />
+        <input v-model="form.name" required class="unisell-input text-sm" placeholder="Nama Supplier (mis. Digiflazz)" />
         <input v-model="form.website" type="url" class="unisell-input text-sm" placeholder="https://supplier.example.com" />
         <select v-model="form.auth_method" class="unisell-input text-sm">
-          <option value="vip_reseller">VIP-Reseller (Gratis &amp; Langsung Aktif)</option>
-          <option value="digiflazz">Digiflazz H2H (Gratis Daftar &amp; Mode Testing)</option>
+          <option value="digiflazz">Digiflazz H2H (Rekomendasi)</option>
+          <option value="vip_reseller">VIP-Reseller</option>
           <option value="sekalipay">SekaliPay API (Reseller / H2H)</option>
           <option value="api_key">API Key (Generic)</option>
           <option value="bearer">Bearer Token</option>
@@ -198,8 +178,8 @@ function rp(v: number) {
             <span class="unisell-badge" :style="{ color: s.health_status === 'healthy' ? 'var(--success)' : 'var(--warning)' }">
               ● {{ s.health_status }}
             </span>
-            <span class="unisell-badge" :style="{ color: s.has_active_subscription ? 'var(--success)' : 'var(--danger)' }">
-              {{ s.has_active_subscription ? 'Langganan Aktif' : 'Belum Berlangganan' }}
+            <span class="unisell-badge" :style="{ color: s.status === 'active' ? 'var(--success)' : 'var(--muted)' }">
+              {{ s.status === 'active' ? 'Aktif' : s.status }}
             </span>
           </div>
         </div>
@@ -219,14 +199,6 @@ function rp(v: number) {
           </button>
 
           <button
-            type="button"
-            class="unisell-btn-secondary text-xs"
-            @click="activePanel = activePanel?.supplierId === s.id && activePanel.mode === 'package' ? null : { supplierId: s.id, mode: 'package' }"
-          >
-            + Buat Paket
-          </button>
-
-          <button
             v-if="s.auth_method !== 'manual'"
             type="button"
             class="unisell-btn-secondary text-xs"
@@ -236,33 +208,24 @@ function rp(v: number) {
           </button>
 
           <button
+            v-if="s.supplier_products_count > 0"
+            type="button"
+            class="unisell-btn-primary text-xs"
+            @click="publishAll(s.id)"
+          >
+            Publikasikan Semua ke Toko
+          </button>
+
+          <button
             type="button"
             class="unisell-btn-secondary text-xs"
             @click="activePanel = activePanel?.supplierId === s.id && activePanel.mode === 'manual' ? null : { supplierId: s.id, mode: 'manual' }"
           >
             + Upload Produk Manual
           </button>
-
-          <button
-            v-if="s.active_subscription"
-            type="button"
-            class="unisell-btn-secondary text-xs"
-            style="border-color: var(--danger); color: var(--danger)"
-            @click="cancelSub(s.active_subscription.id)"
-          >
-            Batalkan Langganan
-          </button>
-          <button
-            v-else-if="s.packages.length"
-            type="button"
-            class="unisell-btn-primary text-xs"
-            @click="subscribePackage(s.id, s.packages[0].id)"
-          >
-            Aktifkan {{ s.packages[0].name }} ({{ rp(s.packages[0].price) }})
-          </button>
         </div>
 
-        <!-- Inline Form: Set Encrypted API Key (Digiflazz / SekaliPay / API Supplier) -->
+        <!-- Inline Form: Set Encrypted API Key -->
         <form
           v-if="activePanel?.supplierId === s.id && activePanel.mode === 'credentials'"
           class="p-4 rounded-xl border space-y-3"
@@ -285,7 +248,7 @@ function rp(v: number) {
               class="unisell-input text-xs"
               placeholder="Username Digiflazz (dari menu Atur Koneksi API)"
             />
-            <input v-model="credForm.api_key" required type="password" class="unisell-input text-xs" placeholder="API Key" />
+            <input v-model="credForm.api_key" required type="password" class="unisell-input text-xs" placeholder="API Key (Production Key untuk sync)" />
             <input
               v-if="s.auth_method !== 'digiflazz' && s.auth_method !== 'vip_reseller'"
               v-model="credForm.api_secret"
@@ -305,22 +268,6 @@ function rp(v: number) {
             </label>
           </div>
           <button type="submit" class="unisell-btn-primary text-xs">Simpan Kredensial Terenkripsi</button>
-        </form>
-
-        <!-- Inline Form: Create Package -->
-        <form
-          v-if="activePanel?.supplierId === s.id && activePanel.mode === 'package'"
-          class="p-4 rounded-xl border space-y-3"
-          style="background: var(--surface-2); border-color: var(--border)"
-          @submit.prevent="createPackage(s.id)"
-        >
-          <div class="text-xs font-bold">Buat Paket Langganan untuk {{ s.name }}</div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input v-model="pkgForm.name" required class="unisell-input text-xs" placeholder="Nama Paket" />
-            <input v-model.number="pkgForm.price" required type="number" min="0" class="unisell-input text-xs" placeholder="Harga (Rp)" />
-            <input v-model.number="pkgForm.period_days" required type="number" min="1" class="unisell-input text-xs" placeholder="Durasi (hari)" />
-          </div>
-          <button type="submit" class="unisell-btn-primary text-xs">Simpan Paket</button>
         </form>
 
         <!-- Inline Form: Upload Manual Product -->

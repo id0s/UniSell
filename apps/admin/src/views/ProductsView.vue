@@ -77,7 +77,7 @@ async function createStorefrontProduct() {
     refetch();
     refetchSp();
   } catch (e: any) {
-    message.value = e?.message || 'Gagal menambahkan produk (pastikan supplier memiliki langganan aktif).';
+    message.value = e?.message || 'Gagal menambahkan produk ke katalog toko.';
   }
 }
 
@@ -86,7 +86,7 @@ const activeScenario = ref<'konservatif' | 'realistis' | 'optimis'>('realistis')
 const costPrice = ref(19500);
 const markupValue = ref(4500);
 const gatewayFee = ref(500);
-const subscriptionCost = ref(150000);
+const subscriptionCost = ref(0);
 const monthlyTxEstimate = ref(80);
 
 function applyScenario(scenario: 'konservatif' | 'realistis' | 'optimis') {
@@ -191,7 +191,7 @@ function rp(v: number) {
         <div>
           <h2 class="text-sm font-bold">Interactive Break-Even &amp; Margin Model</h2>
           <p class="text-[11px]" style="color: var(--muted)">
-            Geser slider untuk menghitung proyeksi laba bersih &amp; jumlah transaksi balik modal langganan
+            Geser slider untuk menghitung proyeksi laba bersih &amp; proyeksi margin bulanan
           </p>
         </div>
 
@@ -224,7 +224,7 @@ function rp(v: number) {
 
         <div class="unisell-card-elevated p-4 space-y-2">
           <div class="flex justify-between text-xs">
-            <span style="color: var(--muted)">Biaya Langganan</span>
+            <span style="color: var(--muted)">Biaya Operasional / Bulan</span>
             <strong class="font-mono-code">{{ rp(subscriptionCost) }}</strong>
           </div>
           <input v-model.number="subscriptionCost" type="range" min="0" max="1000000" step="25000" class="unisell-slider" />

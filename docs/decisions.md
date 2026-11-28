@@ -35,3 +35,7 @@
   - Webhook pembayaran diverifikasi signature-nya terlebih dahulu, lalu dilindungi dual idempotency gate: unique constraint `webhook_logs.event_id` + `DB::transaction` dengan `lockForUpdate()` pada `payment_transactions` dan `orders`.
   - Kredensial supplier (`supplier_credentials.payload`) dan hasil pengiriman (`deliveries.payload`) dienkripsi menggunakan Laravel encrypted casts; kredensial disembunyikan (`$hidden`) dan tidak pernah muncul di response API atau audit log.
   - Backup harian & uji restore disediakan di `scripts/backup-db.sh` dan `scripts/restore-db.sh`.
+
+## Penghapusan Syarat Langganan Supplier (Langsung Digiflazz)
+- **Keputusan**: Menghapus kewajiban paket/langganan supplier sebelum mempublikasikan produk. Supplier (seperti Digiflazz) langsung berstatus `active` dan menggunakan saldo deposit Digiflazz.
+- **Dampak**: `ProductAggregatorService` tidak lagi memblokir publikasi berdasarkan `hasActiveSubscription()`, ditambah endpoint `POST /api/v1/admin/suppliers/{supplier}/publish-all` untuk publikasi massal produk hasil sync, serta pembersihan UI paket/langganan di Admin.

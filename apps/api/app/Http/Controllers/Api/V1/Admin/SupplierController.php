@@ -37,6 +37,7 @@ class SupplierController extends Controller
         $validated = $request->validated();
         $credentials = $validated['credentials'] ?? null;
         unset($validated['credentials']);
+        $validated['status'] = $validated['status'] ?? Supplier::STATUS_ACTIVE;
 
         $supplier = Supplier::create($validated);
 
